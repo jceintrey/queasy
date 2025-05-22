@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-QueasyApplication<queasy>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "jerem.local.queasy.QueasyApplication",
+            "projectName": "queasy",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

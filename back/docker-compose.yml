@@ -1,0 +1,29 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: queasy-mysql
+    restart: unless-stopped
+    ports: # comment/uncomment port config to access db from host
+      - "3310:3306"
+    env_file:
+      - .env-mysql
+    volumes:
+      - queasy_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - queasy_private
+      - queasy_admin # comment/uncomment port config to access API from host
+
+volumes:
+  queasy_mysql_data:
+
+networks:
+  queasy_public:
+  queasy_private:
+    internal: true
+  queasy_admin:
+    internal: false
