@@ -18,6 +18,7 @@ import jerem.local.queasy.service.RegistrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -63,15 +64,23 @@ public class AuthController {
     @ApiResponse(responseCode = "200", description = "Successful authentication, returns a token")
     @ApiResponse(responseCode = "401", description = "Unauthorized")
     @PostMapping("/login")
-    public ResponseEntity<AuthResponseDTO> login(@RequestBody AuthRequestDTO request) {
+    public ResponseEntity<AuthResponseDTO> login(@RequestBody AuthRequestDTO request, HttpServletResponse response) {
         try {
-            AuthResponseDTO authResponse = authenticationService.authenticate(request);
-            return ResponseEntity.ok(authResponse);
+            authenticationService.login(request, response);
+            return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("Authentication failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new AuthResponseDTO("error"));
         }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+
+        authenticationService.logout(response);
+
+        return ResponseEntity.ok().build();
     }
 
     /**

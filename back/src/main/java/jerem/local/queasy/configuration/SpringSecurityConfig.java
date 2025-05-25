@@ -9,9 +9,13 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import jerem.local.queasy.configuration.filters.JwtCookieAuthenticationFilter;
 import jerem.local.queasy.configuration.filters.JwtDebugFilter;
-import jerem.local.queasy.service.JwtTokenProvider;
+import jerem.local.queasy.service.JwtService;
+
 import static org.springframework.security.config.Customizer.withDefaults;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -37,7 +41,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SpringSecurityConfig {
         private final UserDetailsService userDetailsService;
-        private final JwtTokenProvider jwtTokenProvider;
+        private final JwtService jwtTokenProvider;
 
         private static final String[] AUTH_WHITELIST = { "/api/auth/login", "/api/auth/register", "/swagger-ui/**",
                         "/v3/api-docs/**"
@@ -45,44 +49,21 @@ public class SpringSecurityConfig {
         };
 
         public SpringSecurityConfig(UserDetailsService userDetailsService,
-                        JwtTokenProvider jwtTokenProvider) {
+                        JwtService jwtTokenProvider) {
                 this.userDetailsService = userDetailsService;
                 this.jwtTokenProvider = jwtTokenProvider;
         }
 
-        /**
-         * Configures the {@link SecurityFilterChain} bean, overiding default security
-         * rules applied
-         * to HTTP requests.
-         * <p>
-         * This configuration: - Disables CSRF protection (may need to be adjusted for
-         * specific use
-         * cases). - Permits access to the {@link AUTH_WHITELIST} URL without
-         * authentication. -
-         * Requires authentication for all other requests. - Configures Spring Security
-         * to act as an
-         * OAuth Ressource Server and enforce jwt authentication
-         * </p>
-         * 
-         * @param http the {@link HttpSecurity} instance used to configure HTTP security
-         * @return the configured {@link SecurityFilterChain} bean
-         * @throws Exception if there is a configuration error
-         */
         @Bean
-        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
                 return http
-                                .cors(Customizer.withDefaults())
-                                .csrf(AbstractHttpConfigurer::disable)
-                                .sessionManagement(
-                                                session -> session
-                                                                .sessionCreationPolicy(
-                                                                                SessionCreationPolicy.STATELESS))
-                                .authorizeHttpRequests(auth -> auth.requestMatchers(AUTH_WHITELIST)
-                                                .permitAll()
+                                .csrf(csrf -> csrf.disable()) // Voir plus bas pour CSRF + cookie
+                                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers(AUTH_WHITELIST).permitAll()
                                                 .anyRequest().authenticated())
-                                .addFilterBefore(new JwtDebugFilter(),
+                                .addFilterBefore(new JwtCookieAuthenticationFilter(jwtTokenProvider),
                                                 UsernamePasswordAuthenticationFilter.class)
-                                .oauth2ResourceServer((oauth2) -> oauth2.jwt(withDefaults()))
                                 .build();
         }
 
@@ -110,7 +91,7 @@ public class SpringSecurityConfig {
          */
         @Bean
         public JwtDecoder JwtDecoder() {
-                return this.jwtTokenProvider.createJwtDecoder();
+                return this.jwtTokenProvider.getJwtDecoder();
         }
 
         /**
@@ -121,7 +102,7 @@ public class SpringSecurityConfig {
          */
         @Bean
         public JwtEncoder JwtEncoder() {
-                return this.jwtTokenProvider.createJwtEncoder();
+                return this.jwtTokenProvider.getJwtEncoder();
         }
 
         /**

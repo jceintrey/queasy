@@ -1,6 +1,10 @@
 package jerem.local.queasy.service;
 
+import java.time.Duration;
+
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -10,8 +14,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jerem.local.queasy.dto.AuthRequestDTO;
-import jerem.local.queasy.dto.AuthResponseDTO;
 import jerem.local.queasy.exception.UserNotFoundException;
 import jerem.local.queasy.model.AppUser;
 import jerem.local.queasy.repository.UserRepository;
@@ -22,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
  * <p>
  * Handles user authentication using Spring Security's
  * {@link AuthenticationManager} and generates a
- * JWT using {@link JwtTokenProvider}. Also provides access to the currently
+ * JWT using {@link JwtService}. Also provides access to the currently
  * authenticated
  * {@link User}.
  * </p>
@@ -32,12 +36,12 @@ import lombok.extern.slf4j.Slf4j;
 @Primary
 public class DefaultAuthenticationService implements AuthenticationService {
     private final AuthenticationManager authenticationManager;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final JwtService jwtTokenProvider;
     private final UserRepository userRepository;
 
     public DefaultAuthenticationService(
             AuthenticationManager authenticationManager,
-            JwtTokenProvider jwtTokenProvider,
+            JwtService jwtTokenProvider,
             UserRepository userRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -45,7 +49,7 @@ public class DefaultAuthenticationService implements AuthenticationService {
 
     }
 
-    public AuthResponseDTO authenticate(AuthRequestDTO request) throws Exception {
+    public void login(AuthRequestDTO request, HttpServletResponse response) throws Exception {
         AppUser user = userRepository.findByUsername(request.getIdentifier())
                 .orElseGet(() -> userRepository.findByEmail(request.getIdentifier()).orElseThrow(
                         () -> new UserNotFoundException("Utilisateur non trouvé")));
@@ -55,9 +59,20 @@ public class DefaultAuthenticationService implements AuthenticationService {
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
                     user.getUsername(), request.getPassword()));
 
+            log.info("DefaultauthenticationService.authenticate: is authenticated ? "
+                    + authentication.isAuthenticated());
+
             String token = jwtTokenProvider.generateToken(authentication);
-            log.info("token: " + token);
-            return new AuthResponseDTO(token);
+
+            ResponseCookie cookie = ResponseCookie.from("jwt", token)
+                    .httpOnly(true)
+                    .secure(false) // true if https and false otherwise
+                    .path("/")
+                    .maxAge(Duration.ofHours(2))
+                    .sameSite("Lax") // ou Strict / None (si tu fais du cross-site avec credentials)
+                    .build();
+
+            response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
         } catch (AuthenticationException e) {
             log.info(e.getMessage());
@@ -83,6 +98,21 @@ public class DefaultAuthenticationService implements AuthenticationService {
             }
         }
         throw new UserNotFoundException("User not found");
+    }
+
+    @Override
+    public void logout(HttpServletResponse response) {
+        ResponseCookie deleteCookie = ResponseCookie.from("jwt", "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(0) // expire immédiatement
+                .sameSite("Lax")
+                .build();
+
+        response.setHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
+
+        SecurityContextHolder.clearContext();
     }
 
 }

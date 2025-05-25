@@ -23,6 +23,13 @@ public class AppUserDetails implements UserDetails {
         this.user = user;
     }
 
+    public AppUserDetails(Long id, String username, String string, List<Object> of) {
+        this.user = new AppUser();
+        user.setId(id);
+        user.setUsername(username);
+
+    }
+
     /**
      * Retrieves the authorities (roles) granted to the user.
      * <p>

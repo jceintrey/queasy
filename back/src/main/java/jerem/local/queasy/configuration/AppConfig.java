@@ -9,9 +9,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import jakarta.annotation.PostConstruct;
 import jerem.local.queasy.configuration.properties.AppConfigProperties;
 import jerem.local.queasy.repository.UserRepository;
-import jerem.local.queasy.service.DefaultJwtTokenProvider;
+import jerem.local.queasy.service.DefaultJwtService;
 import jerem.local.queasy.service.DefaultUserManagementService;
-import jerem.local.queasy.service.JwtTokenProvider;
+import jerem.local.queasy.service.JwtService;
 import jerem.local.queasy.service.UserManagementService;
 
 /**
@@ -40,8 +40,8 @@ public class AppConfig {
      * @return a JwtFactory specific implementation
      */
     @Bean
-    public JwtTokenProvider jwtFactory(AppConfigProperties appConfigProperties) {
-        return new DefaultJwtTokenProvider(appConfigProperties.getJwtsecretkey());
+    public JwtService jwtFactory(AppConfigProperties appConfigProperties) {
+        return new DefaultJwtService(appConfigProperties.getJwtsecretkey());
     }
 
     /**
