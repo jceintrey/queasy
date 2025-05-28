@@ -3,6 +3,7 @@ package jerem.local.queasy.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -16,6 +17,11 @@ import lombok.NonNull;
 @NoArgsConstructor
 public class AppUserSummaryDTO {
     private Long id;
+
+    public AppUserSummaryDTO(String username, String email) {
+        this.username = username;
+        this.email = email;
+    }
 
     @NonNull
     @Size(max = 30)

@@ -1,6 +1,7 @@
 package jerem.local.queasy.service;
 
 import java.time.Duration;
+import java.util.stream.Collectors;
 
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
@@ -11,13 +12,20 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
 import jakarta.servlet.http.HttpServletResponse;
+import jerem.local.queasy.dto.AppUserDetailedDTO;
+import jerem.local.queasy.dto.AppUserSummaryDTO;
 import jerem.local.queasy.dto.AuthRequestDTO;
+import jerem.local.queasy.exception.UserNotAuthenticatedException;
 import jerem.local.queasy.exception.UserNotFoundException;
+import jerem.local.queasy.mapper.UserMapper;
 import jerem.local.queasy.model.AppUser;
+import jerem.local.queasy.model.AppUserDetails;
+import jerem.local.queasy.model.Role;
 import jerem.local.queasy.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,16 +44,19 @@ import lombok.extern.slf4j.Slf4j;
 @Primary
 public class DefaultAuthenticationService implements AuthenticationService {
     private final AuthenticationManager authenticationManager;
-    private final JwtService jwtTokenProvider;
+    private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
     public DefaultAuthenticationService(
             AuthenticationManager authenticationManager,
-            JwtService jwtTokenProvider,
-            UserRepository userRepository) {
+            JwtService jwtService,
+            UserRepository userRepository,
+            UserMapper userMapper) {
         this.authenticationManager = authenticationManager;
-        this.jwtTokenProvider = jwtTokenProvider;
+        this.jwtService = jwtService;
         this.userRepository = userRepository;
+        this.userMapper = userMapper;
 
     }
 
@@ -62,7 +73,7 @@ public class DefaultAuthenticationService implements AuthenticationService {
             log.info("DefaultauthenticationService.authenticate: is authenticated ? "
                     + authentication.isAuthenticated());
 
-            String token = jwtTokenProvider.generateToken(authentication);
+            String token = jwtService.generateToken(authentication);
 
             ResponseCookie cookie = ResponseCookie.from("jwt", token)
                     .httpOnly(true)
@@ -81,24 +92,25 @@ public class DefaultAuthenticationService implements AuthenticationService {
 
     }
 
-    @Override
-    public AppUser getAuthenticatedUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            Object principal = authentication.getPrincipal();
-            if (principal instanceof Jwt) {
-                Jwt jwt = (Jwt) principal;
-                Long userId = jwt.getClaim("id");
-                log.debug("" + jwt.getClaim("id"));
-                log.debug(jwt.getClaim("username"));
-                log.debug(jwt.getClaim("email"));
+    // @Override
+    // public AppUser getAuthenticatedUser() {
+    // Authentication authentication =
+    // SecurityContextHolder.getContext().getAuthentication();
+    // if (authentication != null && authentication.isAuthenticated()) {
+    // Object principal = authentication.getPrincipal();
+    // if (principal instanceof Jwt) {
+    // Jwt jwt = (Jwt) principal;
+    // Long userId = jwt.getClaim("id");
+    // log.debug("" + jwt.getClaim("id"));
+    // log.debug(jwt.getClaim("username"));
+    // log.debug(jwt.getClaim("email"));
 
-                return userRepository.findById(userId)
-                        .orElseThrow(() -> new UserNotFoundException("User not found"));
-            }
-        }
-        throw new UserNotFoundException("User not found");
-    }
+    // return userRepository.findById(userId)
+    // .orElseThrow(() -> new UserNotFoundException("User not found"));
+    // }
+    // }
+    // throw new UserNotFoundException("User not found");
+    // }
 
     @Override
     public void logout(HttpServletResponse response) {
@@ -113,6 +125,54 @@ public class DefaultAuthenticationService implements AuthenticationService {
         response.setHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
 
         SecurityContextHolder.clearContext();
+    }
+
+    @Override
+    public AppUserDetailedDTO getUserProfile() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            log.warn("User is not authenticated");
+            throw new UserNotAuthenticatedException("User is not authenticated");
+        }
+
+        Object principal = authentication.getPrincipal();
+
+        if (!(principal instanceof AppUserDetails)) {
+            String principalType = (principal != null) ? principal.getClass().getName() : "null";
+            log.error("Auth principal is not an AppUserDetails object but: {}", principalType);
+            throw new UserNotFoundException(
+                    "User not found because principal is not an AppUserDetails --> " + principalType);
+        }
+
+        AppUserDetails appUserDetails = (AppUserDetails) principal;
+        long userId = appUserDetails.getId();
+        AppUser appUser = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id " + userId));
+
+        return userMapper.toDto(appUser);
+
+    }
+
+    @Override
+    public Authentication buildAuthenticationFromJwt(Jwt jwt) {
+
+        Long userId = jwt.getClaim("id");
+
+        AppUser appUser = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotAuthenticatedException("User not found with id " + userId));
+
+        UserDetails userDetails = new AppUserDetails(appUser);
+
+        log.info("buildAuthenticationFromJwt----");
+        log.info("User id is :" + userId);
+        log.info("User is :" + appUser.getEmail() + " - roles: " + appUser.getRoles());
+        log.info("User roles: {}", appUser.getRoles().stream()
+                .map(Role::getName)
+                .collect(Collectors.joining(", ")));
+
+        return new UsernamePasswordAuthenticationToken(userDetails, jwt.getTokenValue(), userDetails.getAuthorities());
+
     }
 
 }

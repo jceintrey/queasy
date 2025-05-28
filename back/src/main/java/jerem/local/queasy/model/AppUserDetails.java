@@ -2,9 +2,15 @@ package jerem.local.queasy.model;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Implementation of {@link UserDetails} representing user-specific information.
@@ -16,6 +22,7 @@ import org.springframework.security.core.userdetails.UserDetails;
  * operations such as account creation, retrieval, and validation.
  * </p>
  */
+@Slf4j
 public class AppUserDetails implements UserDetails {
     private final AppUser user;
 
@@ -23,10 +30,12 @@ public class AppUserDetails implements UserDetails {
         this.user = user;
     }
 
-    public AppUserDetails(Long id, String username, String string, List<Object> of) {
+    public AppUserDetails(Long id, String username, String password, Set<Role> roles) {
         this.user = new AppUser();
         user.setId(id);
         user.setUsername(username);
+        user.setPassword(password);
+        user.setRoles(roles);
 
     }
 
@@ -45,9 +54,11 @@ public class AppUserDetails implements UserDetails {
      */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // TODO: Retrieve roles from the database
-        // Future improvement: Use a dedicated role table
-        return List.of(() -> "ROLE_USER");
+
+        log.info("Récupération des Authorities"
+                + user.getRoles().stream().map(role -> role.getName()).toList().toString());
+        return user.getRoles().stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName()))
+                .collect(Collectors.toSet());
     }
 
     @Override
@@ -66,6 +77,10 @@ public class AppUserDetails implements UserDetails {
 
     public Long getId() {
         return user.getId();
+    }
+
+    public Set<Role> getRoles() {
+        return user.getRoles();
     }
 
 }

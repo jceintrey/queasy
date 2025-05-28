@@ -3,12 +3,15 @@ package jerem.local.queasy.service;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -23,7 +26,10 @@ import com.nimbusds.jose.proc.SecurityContext;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jerem.local.queasy.exception.UserNotFoundException;
+import jerem.local.queasy.model.AppUser;
 import jerem.local.queasy.model.AppUserDetails;
+import jerem.local.queasy.model.Role;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -109,6 +115,8 @@ public class DefaultJwtService implements JwtService {
 
         return JwtClaimsSet.builder().subject(userDetails.getUsername())
                 .claim("id", userDetails.getId())
+                .claim("roles",
+                        userDetails.getRoles().stream().map(role -> role.getName()).collect(Collectors.toList()))
                 .claim("username", userDetails.getUsername()).issuedAt(Instant.now())
                 .expiresAt(Instant.now().plus(1, ChronoUnit.HOURS)).build();
     }
@@ -134,14 +142,36 @@ public class DefaultJwtService implements JwtService {
         }
     }
 
-    @Override
-    public Authentication getAuthentication(Jwt jwt) {
-        Long id = jwt.getClaim("id");
-        String username = jwt.getSubject();
+    // @Override
+    // public Authentication getAuthentication(Jwt jwt) {
+    // Long id = jwt.getClaim("id");
+    // String username = jwt.getSubject();
 
-        AppUserDetails userDetails = new AppUserDetails(id, username, "", List.of()); // todo add role list
-        return new UsernamePasswordAuthenticationToken(userDetails, jwt.getTokenValue(), userDetails.getAuthorities());
-    }
+    // List<String> roleNames = jwt.getClaim("roles");
+
+    // Set<Role> roles = roleNames.stream().map(roleName -> new Role(null,
+    // roleName)).collect(Collectors.toSet());
+
+    // AppUserDetails userDetails = new AppUserDetails(id, username, "", roles);
+    // return new UsernamePasswordAuthenticationToken(userDetails,
+    // jwt.getTokenValue(), userDetails.getAuthorities());
+    // }
+
+    // @Override
+    // public Authentication getAuthentication(Jwt jwt) {
+    // Long id = jwt.getClaim("id");
+
+    // AppUser user = userRepository.findById(id)
+    // .orElseThrow(() -> new UserNotFoundException("User not found with ID: " +
+    // id));
+
+    // AppUserDetails userDetails = new AppUserDetails(user);
+
+    // return new UsernamePasswordAuthenticationToken(
+    // userDetails,
+    // jwt.getTokenValue(),
+    // userDetails.getAuthorities());
+    // }
 
     public String extractJwtFromCookie(HttpServletRequest request) {
         if (request.getCookies() != null) {

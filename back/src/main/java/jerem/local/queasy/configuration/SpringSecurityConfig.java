@@ -12,6 +12,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import jerem.local.queasy.configuration.filters.JwtCookieAuthenticationFilter;
 import jerem.local.queasy.configuration.filters.JwtDebugFilter;
+import jerem.local.queasy.service.AuthenticationService;
 import jerem.local.queasy.service.JwtService;
 
 import static org.springframework.security.config.Customizer.withDefaults;
@@ -41,30 +42,66 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SpringSecurityConfig {
         private final UserDetailsService userDetailsService;
-        private final JwtService jwtTokenProvider;
+        private final JwtService jwtService;
+        // private final AuthenticationService authenticationService;
 
         private static final String[] AUTH_WHITELIST = { "/api/auth/login", "/api/auth/register", "/swagger-ui/**",
                         "/v3/api-docs/**"
 
         };
 
-        public SpringSecurityConfig(UserDetailsService userDetailsService,
-                        JwtService jwtTokenProvider) {
+        public SpringSecurityConfig(
+                        UserDetailsService userDetailsService,
+                        JwtService jwtService
+        // AuthenticationService authenticationService
+        ) {
                 this.userDetailsService = userDetailsService;
-                this.jwtTokenProvider = jwtTokenProvider;
+                this.jwtService = jwtService;
+                // this.authenticationService = authenticationService;
         }
 
         @Bean
-        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                        JwtCookieAuthenticationFilter jwtCookieAuthenticationFilter) throws Exception {
+
+                // JwtCookieAuthenticationFilter jwtCookieAuthenticationFilter = new
+                // JwtCookieAuthenticationFilter(
+                // jwtService);
+                // jwtCookieAuthenticationFilter.setAuthenticationService(authenticationService);
                 return http
+                                .cors(Customizer.withDefaults())
                                 .csrf(csrf -> csrf.disable()) // Voir plus bas pour CSRF + cookie
                                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(AUTH_WHITELIST).permitAll()
+                                                .requestMatchers("/api/admin").hasRole("ADMIN")
+                                                .requestMatchers("**").hasAnyRole("USER", "ADMIN", "OPERATOR")
                                                 .anyRequest().authenticated())
-                                .addFilterBefore(new JwtCookieAuthenticationFilter(jwtTokenProvider),
+                                .addFilterBefore(jwtCookieAuthenticationFilter,
                                                 UsernamePasswordAuthenticationFilter.class)
                                 .build();
+        }
+
+        /**
+         * Get a JwtDecoder from the factory. This bean is requierd by Spring security.
+         * 
+         * @return the configured {@link JwtDecoder} bean
+         * 
+         */
+        @Bean
+        public JwtDecoder JwtDecoder() {
+                return this.jwtService.getJwtDecoder();
+        }
+
+        /**
+         * Get a JwtEncoder from the factory. This bean is requierd by Spring security.
+         * 
+         * @return the configured {@link JwtEncoder} bean
+         * 
+         */
+        @Bean
+        public JwtEncoder JwtEncoder() {
+                return this.jwtService.getJwtEncoder();
         }
 
         /**
@@ -81,28 +118,6 @@ public class SpringSecurityConfig {
         @Bean
         public PasswordEncoder passwordEncoder() {
                 return new BCryptPasswordEncoder();
-        }
-
-        /**
-         * Get a JwtDecoder from the factory. This bean is requierd by Spring security.
-         * 
-         * @return the configured {@link JwtDecoder} bean
-         * 
-         */
-        @Bean
-        public JwtDecoder JwtDecoder() {
-                return this.jwtTokenProvider.getJwtDecoder();
-        }
-
-        /**
-         * Get a JwtEncoder from the factory. This bean is requierd by Spring security.
-         * 
-         * @return the configured {@link JwtEncoder} bean
-         * 
-         */
-        @Bean
-        public JwtEncoder JwtEncoder() {
-                return this.jwtTokenProvider.getJwtEncoder();
         }
 
         /**

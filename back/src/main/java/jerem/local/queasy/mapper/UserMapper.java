@@ -1,12 +1,16 @@
 package jerem.local.queasy.mapper;
 
+import java.util.List;
+
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
+import jerem.local.queasy.dto.AppUserDetailedDTO;
 import jerem.local.queasy.dto.AppUserSummaryDTO;
 import jerem.local.queasy.dto.RegisterRequestDTO;
 import jerem.local.queasy.dto.UserDetailedDTO;
 import jerem.local.queasy.model.AppUser;
+import jerem.local.queasy.model.Role;
 
 /*
  * Mapper class used to convert {@link User} objects to {@link UserSummaryDto}. It handles
@@ -21,8 +25,13 @@ public class UserMapper implements Mapper<AppUser, AppUserSummaryDTO> {
     }
 
     @Override
-    public AppUserSummaryDTO toDto(AppUser user) {
-        AppUserSummaryDTO userDto = modelMapper.map(user, AppUserSummaryDTO.class);
+    public AppUserDetailedDTO toDto(AppUser user) {
+        AppUserDetailedDTO userDto = modelMapper.map(user, AppUserDetailedDTO.class);
+        List<String> roles = user.getRoles()
+                .stream()
+                .map(Role::getName)
+                .toList();
+        userDto.setRoles(roles);
         return userDto;
     }
 

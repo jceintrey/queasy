@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jerem.local.queasy.dto.AppUserDetailedDTO;
 import jerem.local.queasy.dto.AppUserSummaryDTO;
 
 import jerem.local.queasy.dto.RegisterRequestDTO;
@@ -20,6 +21,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * Controller class used for authentication purpose.
@@ -99,6 +102,14 @@ public class AuthController {
     public ResponseEntity<AppUserSummaryDTO> register(@RequestBody RegisterRequestDTO request) {
         AppUserSummaryDTO authResponse = registrationService.register(request);
         return ResponseEntity.ok(authResponse);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<AppUserDetailedDTO> getUserProfile(HttpServletResponse response) {
+
+        AppUserDetailedDTO appUserSummaryDTO = authenticationService.getUserProfile();
+
+        return ResponseEntity.ok(appUserSummaryDTO);
     }
 
 }

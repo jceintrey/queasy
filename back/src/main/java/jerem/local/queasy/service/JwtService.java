@@ -43,7 +43,7 @@ public interface JwtService {
      */
     String generateToken(Authentication authentication) throws Exception;
 
-    Authentication getAuthentication(Jwt jwt);
+    // Authentication getAuthentication(Jwt jwt);
 
     /**
      * Extract Jwt String from Jwt Cookie in the given Request

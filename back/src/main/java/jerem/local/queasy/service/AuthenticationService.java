@@ -1,6 +1,11 @@
 package jerem.local.queasy.service;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
+
 import jakarta.servlet.http.HttpServletResponse;
+import jerem.local.queasy.dto.AppUserDetailedDTO;
+import jerem.local.queasy.dto.AppUserSummaryDTO;
 import jerem.local.queasy.dto.AuthRequestDTO;
 import jerem.local.queasy.model.AppUser;
 
@@ -34,6 +39,21 @@ public interface AuthenticationService {
      *
      * @return the authenticated {@link User}
      */
-    public AppUser getAuthenticatedUser();
+    // public AppUser getAuthenticatedUser();
+
+    /**
+     * Returns the currently authenticated user as a Dto
+     *
+     * @return the authenticated {@link AppUserDetailedDTO}
+     */
+    AppUserDetailedDTO getUserProfile();
+
+    /**
+     * Build Authentication Object from Jwt
+     * 
+     * @param jwt
+     * @return
+     */
+    Authentication buildAuthenticationFromJwt(Jwt jwt);
 
 }
