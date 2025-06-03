@@ -17,6 +17,11 @@ import lombok.NonNull;
 public class AppUserSummaryDTO {
     private Long id;
 
+    public AppUserSummaryDTO(String username, String email) {
+        this.username = username;
+        this.email = email;
+    }
+
     @NonNull
     @Size(max = 30)
     private String username;

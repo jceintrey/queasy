@@ -11,5 +11,11 @@ import jerem.local.queasy.dto.RegisterRequestDTO;
  * </p>
  */
 public interface RegistrationService {
+    /**
+     * Register a new user provided their informations
+     * 
+     * @param registerRequestDto
+     * @return
+     */
     public AppUserSummaryDTO register(RegisterRequestDTO registerRequestDto);
 }

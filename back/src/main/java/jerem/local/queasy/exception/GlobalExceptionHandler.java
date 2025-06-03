@@ -32,6 +32,7 @@ public class GlobalExceptionHandler {
             case UsernameAlreadyExistException ignored -> HttpStatus.CONFLICT;
             case AnswerNotFoundException ignored -> HttpStatus.NOT_FOUND;
             case InvalidQuizException ignored -> HttpStatus.OK;
+            case UserNotAuthenticatedException ignored -> HttpStatus.UNAUTHORIZED;
 
             default -> HttpStatus.BAD_REQUEST;
         };

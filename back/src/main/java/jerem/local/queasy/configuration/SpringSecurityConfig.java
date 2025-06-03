@@ -7,11 +7,12 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import jerem.local.queasy.configuration.filters.JwtDebugFilter;
-import jerem.local.queasy.service.JwtTokenProvider;
-import static org.springframework.security.config.Customizer.withDefaults;
+import jerem.local.queasy.configuration.filters.JwtCookieAuthenticationFilter;
+import jerem.local.queasy.service.JwtService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,7 +20,6 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,53 +37,63 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SpringSecurityConfig {
         private final UserDetailsService userDetailsService;
-        private final JwtTokenProvider jwtTokenProvider;
+        private final JwtService jwtService;
+        // private final AuthenticationService authenticationService;
 
         private static final String[] AUTH_WHITELIST = { "/api/auth/login", "/api/auth/register", "/swagger-ui/**",
-                        "/v3/api-docs/**"
+                        "/v3/api-docs/**", "/api/auth/csrf"
 
         };
 
-        public SpringSecurityConfig(UserDetailsService userDetailsService,
-                        JwtTokenProvider jwtTokenProvider) {
+        public SpringSecurityConfig(
+                        UserDetailsService userDetailsService,
+                        JwtService jwtService) {
                 this.userDetailsService = userDetailsService;
-                this.jwtTokenProvider = jwtTokenProvider;
+                this.jwtService = jwtService;
+        }
+
+        @Bean
+        public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                        JwtCookieAuthenticationFilter jwtCookieAuthenticationFilter) throws Exception {
+
+                return http
+                                .cors(Customizer.withDefaults())
+                                // Use .csrf(csrf -> csrf.disable()) if needed to exclude a csrf problem
+                                .csrf(csrf -> csrf
+                                                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                                                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
+                                .sessionManagement(
+                                                sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers(AUTH_WHITELIST).permitAll()
+                                                .requestMatchers("/api/admin").hasRole("ADMIN")
+                                                .requestMatchers("**").hasAnyRole("USER", "ADMIN", "OPERATOR")
+                                                .anyRequest().authenticated())
+                                .addFilterBefore(jwtCookieAuthenticationFilter,
+                                                UsernamePasswordAuthenticationFilter.class)
+                                .build();
         }
 
         /**
-         * Configures the {@link SecurityFilterChain} bean, overiding default security
-         * rules applied
-         * to HTTP requests.
-         * <p>
-         * This configuration: - Disables CSRF protection (may need to be adjusted for
-         * specific use
-         * cases). - Permits access to the {@link AUTH_WHITELIST} URL without
-         * authentication. -
-         * Requires authentication for all other requests. - Configures Spring Security
-         * to act as an
-         * OAuth Ressource Server and enforce jwt authentication
-         * </p>
+         * Get a JwtDecoder from the factory. This bean is requierd by Spring security.
          * 
-         * @param http the {@link HttpSecurity} instance used to configure HTTP security
-         * @return the configured {@link SecurityFilterChain} bean
-         * @throws Exception if there is a configuration error
+         * @return the configured {@link JwtDecoder} bean
+         * 
          */
         @Bean
-        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-                return http
-                                .cors(Customizer.withDefaults())
-                                .csrf(AbstractHttpConfigurer::disable)
-                                .sessionManagement(
-                                                session -> session
-                                                                .sessionCreationPolicy(
-                                                                                SessionCreationPolicy.STATELESS))
-                                .authorizeHttpRequests(auth -> auth.requestMatchers(AUTH_WHITELIST)
-                                                .permitAll()
-                                                .anyRequest().authenticated())
-                                .addFilterBefore(new JwtDebugFilter(),
-                                                UsernamePasswordAuthenticationFilter.class)
-                                .oauth2ResourceServer((oauth2) -> oauth2.jwt(withDefaults()))
-                                .build();
+        public JwtDecoder JwtDecoder() {
+                return this.jwtService.getJwtDecoder();
+        }
+
+        /**
+         * Get a JwtEncoder from the factory. This bean is requierd by Spring security.
+         * 
+         * @return the configured {@link JwtEncoder} bean
+         * 
+         */
+        @Bean
+        public JwtEncoder JwtEncoder() {
+                return this.jwtService.getJwtEncoder();
         }
 
         /**
@@ -100,28 +110,6 @@ public class SpringSecurityConfig {
         @Bean
         public PasswordEncoder passwordEncoder() {
                 return new BCryptPasswordEncoder();
-        }
-
-        /**
-         * Get a JwtDecoder from the factory. This bean is requierd by Spring security.
-         * 
-         * @return the configured {@link JwtDecoder} bean
-         * 
-         */
-        @Bean
-        public JwtDecoder JwtDecoder() {
-                return this.jwtTokenProvider.createJwtDecoder();
-        }
-
-        /**
-         * Get a JwtEncoder from the factory. This bean is requierd by Spring security.
-         * 
-         * @return the configured {@link JwtEncoder} bean
-         * 
-         */
-        @Bean
-        public JwtEncoder JwtEncoder() {
-                return this.jwtTokenProvider.createJwtEncoder();
         }
 
         /**
@@ -149,8 +137,8 @@ public class SpringSecurityConfig {
 
         /**
          * Configures global CORS settings to allow frontend requests from
-         * localhost:4200.
-         *
+         * localhost:4200 and from a localhost:80
+         * 
          * <p>
          * Allows all paths (/**) to accept cross-origin requests from the frontend dev
          * server with
@@ -172,7 +160,7 @@ public class SpringSecurityConfig {
                                                                 "http://localhost:4200", "http://127.0.0.1:4200")
                                                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                                                 .allowedHeaders("*")
-                                                .allowCredentials(true); // si tu utilises des cookies / auth header
+                                                .allowCredentials(true); // because we uses http only jwt cookie
                         }
                 };
         }

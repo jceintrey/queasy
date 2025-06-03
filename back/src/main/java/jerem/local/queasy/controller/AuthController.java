@@ -2,11 +2,13 @@ package jerem.local.queasy.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jerem.local.queasy.dto.AppUserDetailedDTO;
 import jerem.local.queasy.dto.AppUserSummaryDTO;
 
 import jerem.local.queasy.dto.RegisterRequestDTO;
@@ -18,7 +20,9 @@ import jerem.local.queasy.service.RegistrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.GetMapping;
 
 /**
  * Controller class used for authentication purpose.
@@ -63,15 +67,23 @@ public class AuthController {
     @ApiResponse(responseCode = "200", description = "Successful authentication, returns a token")
     @ApiResponse(responseCode = "401", description = "Unauthorized")
     @PostMapping("/login")
-    public ResponseEntity<AuthResponseDTO> login(@RequestBody AuthRequestDTO request) {
+    public ResponseEntity<AuthResponseDTO> login(@RequestBody AuthRequestDTO request, HttpServletResponse response) {
         try {
-            AuthResponseDTO authResponse = authenticationService.authenticate(request);
-            return ResponseEntity.ok(authResponse);
+            authenticationService.login(request, response);
+            return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("Authentication failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new AuthResponseDTO("error"));
         }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+
+        authenticationService.logout(response);
+
+        return ResponseEntity.ok().build();
     }
 
     /**
@@ -90,6 +102,30 @@ public class AuthController {
     public ResponseEntity<AppUserSummaryDTO> register(@RequestBody RegisterRequestDTO request) {
         AppUserSummaryDTO authResponse = registrationService.register(request);
         return ResponseEntity.ok(authResponse);
+    }
+
+    /**
+     * Retrieve the authenticated user Spring security context
+     * 
+     * @return {@link AppUserDetailedDTO} the detailed User
+     */
+    @GetMapping("/me")
+    public ResponseEntity<AppUserDetailedDTO> getUserProfile() {
+
+        AppUserDetailedDTO appUserSummaryDTO = authenticationService.getUserProfile();
+
+        return ResponseEntity.ok(appUserSummaryDTO);
+    }
+
+    /**
+     * Provides the csrfToken given the CSRFToken injected by Spring.
+     * 
+     * @param csrfToken injected by Spring with csrf config
+     * @return {@link CsrfToken} the token csrf
+     */
+    @GetMapping("/csrf")
+    public ResponseEntity<CsrfToken> getCsrfToken(CsrfToken csrfToken) {
+        return ResponseEntity.ok(csrfToken);
     }
 
 }

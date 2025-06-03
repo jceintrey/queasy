@@ -2,11 +2,15 @@ package jerem.local.queasy.service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.stream.Collectors;
+
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -16,25 +20,28 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jerem.local.queasy.model.AppUserDetails;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 
 /**
- * Default implementation of {@link JwtTokenProvider}. This implementation uses
+ * Default implementation of {@link JwtService}. This implementation uses
  * a symetric Hmac with
  * sha256 algorithm to encode and decode the token. The secret key is provided
  * in constructor.
  */
 @Slf4j
 @Data
-public class DefaultJwtTokenProvider implements JwtTokenProvider {
+public class DefaultJwtService implements JwtService {
+
     private final SecretKey secretKey;
     private JwtDecoder jwtDecoder;
     private JwtEncoder jwtEncoder;
 
-    public DefaultJwtTokenProvider(String secret) {
+    public DefaultJwtService(String secret) {
         if (secret == null || secret.length() < 32) {
             throw new IllegalArgumentException("Secret key must be at least 32 characters long");
         }
@@ -42,7 +49,7 @@ public class DefaultJwtTokenProvider implements JwtTokenProvider {
     }
 
     @Override
-    public JwtDecoder createJwtDecoder() {
+    public JwtDecoder getJwtDecoder() {
         if (this.jwtDecoder == null) {
             try {
                 this.jwtDecoder = NimbusJwtDecoder.withSecretKey(secretKey)
@@ -58,7 +65,7 @@ public class DefaultJwtTokenProvider implements JwtTokenProvider {
     }
 
     @Override
-    public JwtEncoder createJwtEncoder() {
+    public JwtEncoder getJwtEncoder() {
         if (this.jwtEncoder == null) {
             try {
                 JWKSource<SecurityContext> jwkSource = new ImmutableSecret<>(secretKey);
@@ -100,6 +107,8 @@ public class DefaultJwtTokenProvider implements JwtTokenProvider {
 
         return JwtClaimsSet.builder().subject(userDetails.getUsername())
                 .claim("id", userDetails.getId())
+                .claim("roles",
+                        userDetails.getRoles().stream().map(role -> role.getName()).collect(Collectors.toList()))
                 .claim("username", userDetails.getUsername()).issuedAt(Instant.now())
                 .expiresAt(Instant.now().plus(1, ChronoUnit.HOURS)).build();
     }
@@ -123,6 +132,31 @@ public class DefaultJwtTokenProvider implements JwtTokenProvider {
             log.error("Error encoding JWT.", e);
             throw e;
         }
+    }
+
+    /**
+     * Extract the JWT token from the JWT Cookie
+     * 
+     * @return the JWT String if found
+     */
+    public String extractJwtFromCookie(HttpServletRequest request) {
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if (COOKIE_NAME.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Decode the provided token String
+     */
+    @Override
+    public Jwt decode(String token) {
+        JwtDecoder jwtDecoder = getJwtDecoder();
+        return jwtDecoder.decode(token);
     }
 
 }
