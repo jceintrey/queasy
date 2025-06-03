@@ -11,6 +11,8 @@ import jakarta.servlet.http.HttpServletRequest;
  * Service interface responsible for operations on token.
  */
 public interface JwtService {
+    public static final String COOKIE_NAME = "jwt";
+
     /**
      * Creates a {@link JwtDecoder} used to decode and verify JWT tokens.
      * {@link JwtDecoder} is

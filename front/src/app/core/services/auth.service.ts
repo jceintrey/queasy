@@ -1,12 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { User } from '../models/user.interface';
+import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:8080/api/auth';
+  private apiUrl = '/api/auth';
 
   constructor(private http: HttpClient) { }
 
@@ -20,7 +21,7 @@ export class AuthService {
       withCredentials: true
     });
   }
-  getCurrentUser() {
+  getCurrentUser(): Observable<User> {
     return this.http.get<User>(`${this.apiUrl}/me`, {
       withCredentials: true
     });

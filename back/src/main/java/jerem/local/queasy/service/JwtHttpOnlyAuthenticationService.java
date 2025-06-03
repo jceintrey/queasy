@@ -30,25 +30,25 @@ import jerem.local.queasy.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Default implementation of {@link AuthenticationService}.
+ * Default implementation of {@link JwtAuthenticationService}.
  * <p>
  * Handles user authentication using Spring Security's
  * {@link AuthenticationManager} and generates a
- * JWT using {@link JwtService}. Also provides access to the currently
- * authenticated
- * {@link User}.
+ * JWT using {@link JwtService}.
+ * The JWT is provided into a http only cookie
  * </p>
  */
 @Slf4j
 @Service
 @Primary
-public class DefaultAuthenticationService implements AuthenticationService {
+public class JwtHttpOnlyAuthenticationService implements JwtAuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final static String JWT_COOKIE_NAME = "jwt";
 
-    public DefaultAuthenticationService(
+    public JwtHttpOnlyAuthenticationService(
             AuthenticationManager authenticationManager,
             JwtService jwtService,
             UserRepository userRepository,
@@ -75,12 +75,12 @@ public class DefaultAuthenticationService implements AuthenticationService {
 
             String token = jwtService.generateToken(authentication);
 
-            ResponseCookie cookie = ResponseCookie.from("jwt", token)
+            ResponseCookie cookie = ResponseCookie.from(JWT_COOKIE_NAME, token)
                     .httpOnly(true)
                     .secure(false) // true if https and false otherwise
                     .path("/")
                     .maxAge(Duration.ofHours(2))
-                    .sameSite("Lax") // ou Strict / None (si tu fais du cross-site avec credentials)
+                    .sameSite("Lax")
                     .build();
 
             response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
@@ -92,33 +92,13 @@ public class DefaultAuthenticationService implements AuthenticationService {
 
     }
 
-    // @Override
-    // public AppUser getAuthenticatedUser() {
-    // Authentication authentication =
-    // SecurityContextHolder.getContext().getAuthentication();
-    // if (authentication != null && authentication.isAuthenticated()) {
-    // Object principal = authentication.getPrincipal();
-    // if (principal instanceof Jwt) {
-    // Jwt jwt = (Jwt) principal;
-    // Long userId = jwt.getClaim("id");
-    // log.debug("" + jwt.getClaim("id"));
-    // log.debug(jwt.getClaim("username"));
-    // log.debug(jwt.getClaim("email"));
-
-    // return userRepository.findById(userId)
-    // .orElseThrow(() -> new UserNotFoundException("User not found"));
-    // }
-    // }
-    // throw new UserNotFoundException("User not found");
-    // }
-
     @Override
     public void logout(HttpServletResponse response) {
         ResponseCookie deleteCookie = ResponseCookie.from("jwt", "")
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .maxAge(0) // expire immédiatement
+                .maxAge(0)
                 .sameSite("Lax")
                 .build();
 
@@ -164,10 +144,8 @@ public class DefaultAuthenticationService implements AuthenticationService {
 
         UserDetails userDetails = new AppUserDetails(appUser);
 
-        log.info("buildAuthenticationFromJwt----");
-        log.info("User id is :" + userId);
-        log.info("User is :" + appUser.getEmail() + " - roles: " + appUser.getRoles());
-        log.info("User roles: {}", appUser.getRoles().stream()
+        log.debug("User id is :" + userId);
+        log.debug("User roles: {}", appUser.getRoles().stream()
                 .map(Role::getName)
                 .collect(Collectors.joining(", ")));
 

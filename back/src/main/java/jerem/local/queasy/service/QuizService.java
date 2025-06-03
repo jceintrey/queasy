@@ -22,6 +22,9 @@ import jerem.local.queasy.repository.QuestionRepository;
 import jerem.local.queasy.repository.QuizRepository;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Service responsible for managing quizzes and their associated questions.
+ */
 @Service
 @Slf4j
 public class QuizService {
@@ -32,6 +35,9 @@ public class QuizService {
     private final QuestionService questionService;
     private final ApplicationEventPublisher eventPublisher;
 
+    /**
+     * Constructor with dependency injection.
+     */
     public QuizService(QuestionRepository questionRepository, QuizRepository quizRepository, QuizMapper quizMapper,
             QuestionService questionService, ApplicationEventPublisher eventPublisher) {
         this.questionRepository = questionRepository;
@@ -39,13 +45,25 @@ public class QuizService {
         this.quizMapper = quizMapper;
         this.questionService = questionService;
         this.eventPublisher = eventPublisher;
-
     }
 
+    /**
+     * Retrieves all quizzes as summary DTOs.
+     *
+     * @return List of all quizzes in summary form.
+     */
     public List<QuizSummaryDTO> getAll() {
         return this.quizMapper.toDto(this.quizRepository.findAll());
     }
 
+    /**
+     * Creates a new quiz.
+     *
+     * @param quizRequest The request DTO containing title and level.
+     * @return The created quiz as a summary DTO.
+     * @throws QuizAlreadyExistException if a quiz with the same title already
+     *                                   exists.
+     */
     public QuizSummaryDTO create(QuizCreationRequestDTO quizRequest) {
         if (this.quizRepository.existsByTitle(quizRequest.getTitle())) {
             throw new QuizAlreadyExistException("Quiz title already used", "QuizService.create");
@@ -62,23 +80,44 @@ public class QuizService {
         return quizMapper.toDto(quiz);
     }
 
+    /**
+     * Retrieves a specific quiz by its ID.
+     *
+     * @param id The ID of the quiz.
+     * @return The quiz as a summary DTO.
+     * @throws QuizNotFoundException if the quiz does not exist.
+     */
     public QuizSummaryDTO getQuizById(Long id) {
-
         Quiz quiz = quizRepository.findById(id).orElseThrow(
                 () -> new QuizNotFoundException("Quiz not found with id " + id, "QuizService.getQuizById"));
         return quizMapper.toDto(quiz);
     }
 
+    /**
+     * Deletes a quiz by its ID.
+     *
+     * @param quizId The ID of the quiz to delete.
+     * @throws QuizNotFoundException if the quiz does not exist.
+     */
     public void deleteById(Long quizId) {
         Quiz quiz = quizRepository.findById(quizId).orElseThrow(
                 () -> new QuizNotFoundException("Quiz not found with id " + quizId, "QuizService.getQuizById"));
-
         this.quizRepository.delete(quiz);
     }
 
+    /**
+     * Removes a question from a quiz.
+     *
+     * @param quizId     The ID of the quiz.
+     * @param questionId The ID of the question to remove.
+     * @throws QuestionNotFoundException if the question does not exist.
+     * @throws QuizNotFoundException     if the quiz does not exist.
+     * @throws BadContextQuizException   if the question does not belong to the
+     *                                   quiz.
+     */
     public void removeQuestionFromQuiz(Long quizId, Long questionId) {
-
         log.info("Remove Question " + questionId + " from quiz " + quizId);
+
         Question question = questionRepository.findById(questionId).orElseThrow(
                 () -> new QuestionNotFoundException("Question not found with id " + questionId,
                         "QuestionService.deleteById"));
@@ -86,11 +125,12 @@ public class QuizService {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id " + quizId,
                         "QuizService.deleteQuestionFromQuiz"));
-        // Question should belong to the given quiz
-        if (!quiz.getQuestions().contains(question))
+
+        if (!quiz.getQuestions().contains(question)) {
             throw new BadContextQuizException(
-                    "QUestion with id " + questionId + " does not belong to quiz with id " + quizId,
+                    "Question with id " + questionId + " does not belong to quiz with id " + quizId,
                     "QuizService.deleteQuestionFromQuiz");
+        }
 
         quiz.getQuestions().remove(question);
         quizRepository.save(quiz);
@@ -98,14 +138,24 @@ public class QuizService {
         eventPublisher.publishEvent(new QuizModifiedEvent(this, quiz));
     }
 
+    /**
+     * Adds a new question to a given quiz.
+     *
+     * @param questionRequest The DTO representing the new question.
+     * @param quizId          The ID of the quiz.
+     * @return The created question as a detailed DTO.
+     * @throws QuizNotFoundException       if the quiz does not exist.
+     * @throws DupplicateQuestionException if a question with the same text already
+     *                                     exists in the quiz.
+     */
     public QuestionDetailedDTO addNewQuestion(QuestionRequestDTO questionRequest, Long quizId) {
-
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id " + quizId,
                         "QuizService.deleteQuestionFromQuiz"));
 
-        if (quiz.getQuestions().stream().anyMatch(q -> q.getText().equalsIgnoreCase(questionRequest.getText())))
+        if (quiz.getQuestions().stream().anyMatch(q -> q.getText().equalsIgnoreCase(questionRequest.getText()))) {
             throw new DupplicateQuestionException("Question already exist in quiz with the given title");
+        }
 
         QuestionDetailedDTO created = this.questionService.addNewQuestion(questionRequest, quiz);
         eventPublisher.publishEvent(new QuizModifiedEvent(this, quiz));
@@ -113,13 +163,19 @@ public class QuizService {
         return created;
     }
 
+    /**
+     * Marks a quiz as validated (functionally placeholder for now).
+     *
+     * @param quizId The ID of the quiz to validate.
+     * @return The validated quiz as a summary DTO.
+     * @throws QuizNotFoundException if the quiz does not exist.
+     */
     public QuizSummaryDTO validate(Long quizId) {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id " + quizId,
                         "QuizService.validate"));
 
         eventPublisher.publishEvent(new QuizModifiedEvent(this, quiz));
-
         return quizMapper.toDto(quiz);
     }
 

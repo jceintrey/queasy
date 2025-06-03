@@ -5,9 +5,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 import jakarta.servlet.http.HttpServletResponse;
 import jerem.local.queasy.dto.AppUserDetailedDTO;
-import jerem.local.queasy.dto.AppUserSummaryDTO;
 import jerem.local.queasy.dto.AuthRequestDTO;
-import jerem.local.queasy.model.AppUser;
 
 /**
  * Service interface responsible for handling user authentication and access to
@@ -17,29 +15,21 @@ import jerem.local.queasy.model.AppUser;
 public interface AuthenticationService {
 
     /**
-     * Authenticates a user based on the provided login credentials.
-     * <p>
-     * This method uses
-     * {@link org.springframework.security.authentication.AuthenticationManager} to
-     * verify the user's identity and generate a JWT token using {@code jwtFactory}.
-     * </p>
+     * Authenticate a user with the provided credentials
+     * HttpServletResponse can be used to add header like jwt Cookie
      *
-     * @param request the login request containing the user's identifier and
-     *                password
-     * @return an {@link AuthResponseDto} containing the generated authentication
-     *         response
-     * @throws Exception if authentication fails
+     * @param request  the DTO with user credentials
+     * @param response the http response
+     * @throws Exception
      */
     public void login(AuthRequestDTO request, HttpServletResponse response) throws Exception;
 
-    public void logout(HttpServletResponse response);
-
     /**
-     * Returns the currently authenticated user.
-     *
-     * @return the authenticated {@link User}
+     * Logout the authenticated user
+     * 
+     * @param response
      */
-    // public AppUser getAuthenticatedUser();
+    public void logout(HttpServletResponse response);
 
     /**
      * Returns the currently authenticated user as a Dto

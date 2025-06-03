@@ -9,6 +9,12 @@ import jerem.local.queasy.repository.QuizRepository;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Service responsible for validating a quiz against configurable business
+ * rules,
+ * such as number of questions, answers per question, and correctness
+ * constraints.
+ */
 @Slf4j
 @Service
 @Data
@@ -17,64 +23,83 @@ public class QuizValidationService {
     private final QuizConfigProperties quizConfigProperties;
     private final QuizRepository quizRepository;
 
+    /**
+     * Constructor for dependency injection.
+     *
+     * @param quizConfigProperties Configuration rules for quizzes (min/max
+     *                             questions, answers...).
+     * @param quizRepository       Repository used to persist quiz validation
+     *                             status.
+     */
     public QuizValidationService(QuizConfigProperties quizConfigProperties, QuizRepository quizRepository) {
-
         this.quizConfigProperties = quizConfigProperties;
         this.quizRepository = quizRepository;
     }
 
+    /**
+     * Validates the provided quiz according to rules from
+     * {@link QuizConfigProperties}.
+     * <ul>
+     * <li>Number of questions must be between defined min and max.</li>
+     * <li>Each question must have a number of answers within limits.</li>
+     * <li>Each question must have at least one correct answer.</li>
+     * </ul>
+     * The result is stored in the {@code valid} and {@code validationMessage}
+     * fields of the quiz,
+     * and the updated quiz is saved to the database.
+     *
+     * @param quiz The quiz to validate.
+     */
     public void validate(Quiz quiz) {
         log.info("QuizValidationService.validate");
+
         StringBuilder message = new StringBuilder();
         boolean valid = true;
 
-        if (quiz.getQuestions().size() < quizConfigProperties.getMinnumberofquestions()) {
-            valid = false;
+        int questionCount = quiz.getQuestions().size();
 
-            message.append(
-                    "Total number of questions is " + quiz.getQuestions().size() + " and must be greater or equal than "
-                            + quizConfigProperties.getMinnumberofquestions() + '.');
+        if (questionCount < quizConfigProperties.getMinnumberofquestions()) {
+            valid = false;
+            message.append("Quiz contains ").append(questionCount)
+                    .append(" questions, which is less than the minimum required (")
+                    .append(quizConfigProperties.getMinnumberofquestions()).append("). ");
         }
 
-        if (quiz.getQuestions().size() > quizConfigProperties.getMaxnumberofquestions()) {
+        if (questionCount > quizConfigProperties.getMaxnumberofquestions()) {
             valid = false;
-            message.append("Total number of questions is " + quiz.getQuestions().size() + " and must be less than "
-                    + quizConfigProperties.getMaxnumberofquestions() + ".");
+            message.append("Quiz contains ").append(questionCount)
+                    .append(" questions, which exceeds the maximum allowed (")
+                    .append(quizConfigProperties.getMaxnumberofquestions()).append("). ");
         }
 
         for (Question question : quiz.getQuestions()) {
-            int size = question.getAnswers().size();
+            int answerCount = question.getAnswers().size();
 
-            if (question.getAnswers().stream().noneMatch((answer) -> answer.getCorrect())) {
+            if (question.getAnswers().stream().noneMatch(answer -> Boolean.TRUE.equals(answer.getCorrect()))) {
                 valid = false;
                 message.append("Question ").append(question.getId())
-                        .append(" should contains at least one correct answer");
+                        .append(" must have at least one correct answer. ");
             }
 
-            if (size < quizConfigProperties.getMinanswersperquestion()) {
+            if (answerCount < quizConfigProperties.getMinanswersperquestion()) {
                 valid = false;
                 message.append("Question ").append(question.getId())
-                        .append(" contains ")
-                        .append(size)
-                        .append(" answers and must contains at least ")
-                        .append(quizConfigProperties.getMinanswersperquestion())
-                        .append(" answers.");
+                        .append(" has ").append(answerCount)
+                        .append(" answers, which is below the minimum required (")
+                        .append(quizConfigProperties.getMinanswersperquestion()).append("). ");
             }
 
-            if (size > quizConfigProperties.getMaxanswersperquestion()) {
+            if (answerCount > quizConfigProperties.getMaxanswersperquestion()) {
                 valid = false;
                 message.append("Question ").append(question.getId())
-                        .append(" contains ")
-                        .append(size)
-                        .append(" answers and must contains less than ")
-                        .append(quizConfigProperties.getMinanswersperquestion())
-                        .append(" answers.");
+                        .append(" has ").append(answerCount)
+                        .append(" answers, which exceeds the maximum allowed (")
+                        .append(quizConfigProperties.getMaxanswersperquestion()).append("). ");
             }
         }
 
         quiz.setValid(valid);
         quiz.setValidationMessage(valid ? null : message.toString().trim());
         quizRepository.save(quiz);
-
     }
 }

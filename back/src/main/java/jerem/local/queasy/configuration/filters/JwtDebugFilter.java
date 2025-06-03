@@ -10,7 +10,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Used in Spring Security filter Chain to debug http request and responses
+ * Used in Spring Security filter Chain to debug http request and responses if
+ * needed
  */
 @Component
 @Slf4j

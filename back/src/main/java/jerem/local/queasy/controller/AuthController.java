@@ -2,6 +2,7 @@ package jerem.local.queasy.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,7 +23,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * Controller class used for authentication purpose.
@@ -104,12 +104,28 @@ public class AuthController {
         return ResponseEntity.ok(authResponse);
     }
 
+    /**
+     * Retrieve the authenticated user Spring security context
+     * 
+     * @return {@link AppUserDetailedDTO} the detailed User
+     */
     @GetMapping("/me")
-    public ResponseEntity<AppUserDetailedDTO> getUserProfile(HttpServletResponse response) {
+    public ResponseEntity<AppUserDetailedDTO> getUserProfile() {
 
         AppUserDetailedDTO appUserSummaryDTO = authenticationService.getUserProfile();
 
         return ResponseEntity.ok(appUserSummaryDTO);
+    }
+
+    /**
+     * Provides the csrfToken given the CSRFToken injected by Spring.
+     * 
+     * @param csrfToken injected by Spring with csrf config
+     * @return {@link CsrfToken} the token csrf
+     */
+    @GetMapping("/csrf")
+    public ResponseEntity<CsrfToken> getCsrfToken(CsrfToken csrfToken) {
+        return ResponseEntity.ok(csrfToken);
     }
 
 }

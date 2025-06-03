@@ -37,7 +37,7 @@ export class LoginComponent {
   onSubmit(): void {
     if (this.loginForm.valid) {
       this.authService.login(this.loginForm.value).subscribe({
-        next: () => this.router.navigate(['']), // ou page protégée
+        next: () => this.router.navigate(['']),
         error: (err) => {
           console.error(err);
           this.errorMessage = 'Échec de l’authentification';
