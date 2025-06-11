@@ -18,8 +18,8 @@ import org.springframework.stereotype.Service;
 
 import jakarta.servlet.http.HttpServletResponse;
 import jerem.local.queasy.dto.AppUserDetailedDTO;
-import jerem.local.queasy.dto.AppUserSummaryDTO;
 import jerem.local.queasy.dto.AuthRequestDTO;
+import jerem.local.queasy.dto.AuthResponseDTO;
 import jerem.local.queasy.exception.UserNotAuthenticatedException;
 import jerem.local.queasy.exception.UserNotFoundException;
 import jerem.local.queasy.mapper.UserMapper;
@@ -46,7 +46,7 @@ public class JwtHttpOnlyAuthenticationService implements JwtAuthenticationServic
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
-    private final static String JWT_COOKIE_NAME = "jwt";
+    private final static String JWT_COOKIE_NAME = JwtService.COOKIE_NAME;
 
     public JwtHttpOnlyAuthenticationService(
             AuthenticationManager authenticationManager,
@@ -60,7 +60,7 @@ public class JwtHttpOnlyAuthenticationService implements JwtAuthenticationServic
 
     }
 
-    public void login(AuthRequestDTO request, HttpServletResponse response) throws Exception {
+    public AuthResponseDTO login(AuthRequestDTO request, HttpServletResponse response) throws Exception {
         AppUser user = userRepository.findByUsername(request.getIdentifier())
                 .orElseGet(() -> userRepository.findByEmail(request.getIdentifier()).orElseThrow(
                         () -> new UserNotFoundException("Utilisateur non trouvé")));
@@ -84,6 +84,9 @@ public class JwtHttpOnlyAuthenticationService implements JwtAuthenticationServic
                     .build();
 
             response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+            // build the DTO
+            return new AuthResponseDTO(token, user.getUsername(), "Authentication Successfull");
 
         } catch (AuthenticationException e) {
             log.info(e.getMessage());

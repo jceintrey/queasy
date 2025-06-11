@@ -58,7 +58,7 @@ public class SpringSecurityConfig {
 
                 return http
                                 .cors(Customizer.withDefaults())
-                                // Use .csrf(csrf -> csrf.disable()) if needed to exclude a csrf problem
+                                // Use .csrf(csrf -> csrf.disable()) if needed to debug a csrf problem
                                 .csrf(csrf -> csrf
                                                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                                                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))

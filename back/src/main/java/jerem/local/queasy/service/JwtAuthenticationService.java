@@ -6,13 +6,14 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import jakarta.servlet.http.HttpServletResponse;
 import jerem.local.queasy.dto.AppUserDetailedDTO;
 import jerem.local.queasy.dto.AuthRequestDTO;
+import jerem.local.queasy.dto.AuthResponseDTO;
 
 /**
  * Service interface responsible for handling user authentication and access to
  * the authenticated
  * user.
  */
-public interface AuthenticationService {
+public interface JwtAuthenticationService {
 
     /**
      * Authenticate a user with the provided credentials
@@ -22,7 +23,7 @@ public interface AuthenticationService {
      * @param response the http response
      * @throws Exception
      */
-    public void login(AuthRequestDTO request, HttpServletResponse response) throws Exception;
+    public AuthResponseDTO login(AuthRequestDTO request, HttpServletResponse response) throws Exception;
 
     /**
      * Logout the authenticated user

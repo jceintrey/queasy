@@ -4,7 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jerem.local.queasy.service.AuthenticationService;
+import jerem.local.queasy.service.JwtAuthenticationService;
 import jerem.local.queasy.service.JwtService;
 
 import java.io.IOException;
@@ -27,9 +27,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class JwtCookieAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final AuthenticationService authenticationService;
+    private final JwtAuthenticationService authenticationService;
 
-    public JwtCookieAuthenticationFilter(JwtService jwtService, AuthenticationService authenticationService) {
+    public JwtCookieAuthenticationFilter(JwtService jwtService, JwtAuthenticationService authenticationService) {
         this.jwtService = jwtService;
         this.authenticationService = authenticationService;
 
