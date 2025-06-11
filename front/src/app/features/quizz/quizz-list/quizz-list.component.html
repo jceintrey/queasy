@@ -1,1 +1,8 @@
-<p>quizz-list works!</p>
+<h1>Liste des quizzes</h1>
+<div class="card-container card-container--fit">
+  @for (quiz of quizzes$ | async; track quiz) {
+  <div class="card-element">
+    <app-quizz [quiz]="quiz"></app-quizz>
+  </div>
+  }
+</div>
