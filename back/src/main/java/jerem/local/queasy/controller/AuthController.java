@@ -15,7 +15,7 @@ import jerem.local.queasy.dto.RegisterRequestDTO;
 import jerem.local.queasy.dto.AuthRequestDTO;
 import jerem.local.queasy.dto.AuthResponseDTO;
 
-import jerem.local.queasy.service.AuthenticationService;
+import jerem.local.queasy.service.JwtAuthenticationService;
 import jerem.local.queasy.service.RegistrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -31,7 +31,8 @@ import org.springframework.web.bind.annotation.GetMapping;
  * the application.
  * </p>
  * <p>
- * - {@link AuthenticationService} service that process the user authentication
+ * - {@link JwtAuthenticationService} service that process the user
+ * authentication
  * -
  * {@link RegistrationService} service used for registering new users
  * </p>
@@ -42,10 +43,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Slf4j
 @Tag(name = "AuthController", description = "Process authentication related operations")
 public class AuthController {
-    private final AuthenticationService authenticationService;
+    private final JwtAuthenticationService authenticationService;
     private final RegistrationService registrationService;
 
-    public AuthController(AuthenticationService authenticationService,
+    public AuthController(JwtAuthenticationService authenticationService,
             RegistrationService registrationService) {
         this.authenticationService = authenticationService;
         this.registrationService = registrationService;
@@ -69,12 +70,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@RequestBody AuthRequestDTO request, HttpServletResponse response) {
         try {
-            authenticationService.login(request, response);
-            return ResponseEntity.ok().build();
+            AuthResponseDTO authResponseDTO = authenticationService.login(request, response);
+            return ResponseEntity.ok(authResponseDTO);
         } catch (Exception e) {
             log.error("Authentication failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new AuthResponseDTO("error"));
+                    .body(new AuthResponseDTO(null, request.getIdentifier(), "Authentication failed"));
         }
     }
 
@@ -119,6 +120,10 @@ public class AuthController {
 
     /**
      * Provides the csrfToken given the CSRFToken injected by Spring.
+     * (!) Should be used in any request even before login or register endpoint
+     *
+     * Csrf token is sent in Cookie XSRF-TOKEN
+     * You should send csrf token value in X-XSRF-TOKEN header
      * 
      * @param csrfToken injected by Spring with csrf config
      * @return {@link CsrfToken} the token csrf

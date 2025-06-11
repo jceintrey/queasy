@@ -18,4 +18,9 @@ import lombok.Data;
 public class AuthResponseDTO {
     @Schema(description = "The JSON Web Token used for authentication.", example = "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzZWxmIiwic3ViIjoiYm9iQG1haWwudGxkIiwiZXhwIjoxNzM4MzQzMTk1LCJpYXQiOjE3MzgzMzk1OTUsInJvbGVzIjoiVVNFUiJ9.dZccscSkZYawnt40cVRFF-3ds5BO7p5yhMH_Syuofrs")
     private String token;
+
+    private String username;
+
+    private String description;
+
 }
