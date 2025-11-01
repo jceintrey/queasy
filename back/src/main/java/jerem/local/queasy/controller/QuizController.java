@@ -15,7 +15,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jerem.local.queasy.dto.QuestionDetailedDTO;
 import jerem.local.queasy.dto.QuestionRequestDTO;
 import jerem.local.queasy.dto.QuizCreationRequestDTO;
+import jerem.local.queasy.dto.QuizResultDTO;
 import jerem.local.queasy.dto.QuizSummaryDTO;
+import jerem.local.queasy.dto.UserAnswersDTO;
 import jerem.local.queasy.service.QuizService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -111,6 +113,16 @@ public class QuizController {
     public ResponseEntity<QuizSummaryDTO> validateQuiz(@PathVariable Long quizId) {
 
         return ResponseEntity.ok(quizService.validate(quizId));
+    }
+
+    @Operation(summary = "submit quiz answers", description = "This endpoint allows a user to submit their quiz answers.")
+    @ApiResponse(responseCode = "200", description = "Successful, return score")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @PostMapping("{quizId}/answers")
+    public ResponseEntity<QuizResultDTO> submitQuizAnswers(@PathVariable Long quizId,
+            @RequestBody UserAnswersDTO userAnswersDTO) {
+
+        return ResponseEntity.ok(quizService.submitQuizAnswers(quizId, userAnswersDTO));
     }
 
 }

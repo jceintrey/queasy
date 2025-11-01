@@ -6,7 +6,9 @@ import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
+import jerem.local.queasy.dto.QuestionDetailedDTO;
 import jerem.local.queasy.dto.QuestionSummaryDTO;
+import jerem.local.queasy.dto.QuizDetailedDTO;
 import jerem.local.queasy.dto.QuizSummaryDTO;
 import jerem.local.queasy.model.Quiz;
 
@@ -27,13 +29,15 @@ public class QuizMapper implements Mapper<Quiz, QuizSummaryDTO> {
 
     @Override
     public QuizSummaryDTO toDto(Quiz quiz) {
-        QuizSummaryDTO quizDto = modelMapper.map(quiz, QuizSummaryDTO.class);
+        QuizDetailedDTO quizDto = modelMapper.map(quiz, QuizDetailedDTO.class);
 
-        List<QuestionSummaryDTO> questionSummaryDTOs = quiz.getQuestions().stream().map(question -> {
-            return questionMapper.toSummaryDto(question);
+        List<QuestionDetailedDTO> questionDetailedDTOs = quiz.getQuestions().stream().map(question -> {
+            return questionMapper.toDto(question);
         }).collect(Collectors.toList());
 
-        quizDto.setQuestions(questionSummaryDTOs);
+        quizDto.setQuestions(questionDetailedDTOs);
+        quizDto.setNumberOfQuestions(questionDetailedDTOs.size());
+
         return quizDto;
     }
 

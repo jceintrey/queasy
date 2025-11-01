@@ -27,5 +27,7 @@ public class QuizSummaryDTO {
     @JsonProperty("validation_message")
     private String validationMessage;
 
-    private List<QuestionSummaryDTO> questions;
+    private int numberOfQuestions;
+
+    private int level;
 }
